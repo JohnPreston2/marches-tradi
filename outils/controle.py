@@ -43,6 +43,8 @@ SHOTS = [
     ("ia_tel_fiche", 375, 812, "ia", "select1"),
     ("robotique_tel", 375, 812, "robotique", None),
     ("ia_methode", 1440, 900, "ia", "meth"),
+    ("cac40_android", 360, 740, "cac40", None),            # taille utile d'un téléphone Android avec la barre d'adresse
+    ("cac40_android_fiche", 360, 740, "cac40", "select0"),
 ]
 if len(sys.argv) > 2 and sys.argv[2] != "tout":       # sous-ensemble : noms separes par des virgules
     SHOTS = [s for s in SHOTS if s[0] in sys.argv[2].split(",")]

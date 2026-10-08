@@ -106,20 +106,30 @@ h1 em { font-style: italic; color: var(--accent); }
 .veil.gone { opacity: 0; pointer-events: none; }
 .fallback { max-width: 40ch; text-align: center; letter-spacing: .02em; text-transform: none; font: 400 13px/1.5 var(--ui); color: var(--ink2); }
 @media (max-width: 1100px) { .hint { display: none; } }
+.rail, .foot { transition: opacity .3s ease; }
+.hd-btns { display: flex; gap: 6px; }
+.nav { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: none; cursor: pointer; color: var(--ink2); font: 400 18px/1 var(--display); }
+.nav:hover, .close:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
 @media (max-width: 760px) {
   .brand, .asof { display: none; }
-  .bar { justify-content: center; }
-  .head { top: calc(64px + env(safe-area-inset-top, 0px)); }
-  h1 { font-size: 30px; }
-  .insight { font-size: 13.5px; margin-top: 10px; }
-  .idx { margin-top: 10px; font-size: 12px; }
+  .bar { justify-content: center; padding-bottom: 6px; }
+  /* en-tête compact : la scène garde la plus grande part de l'écran */
+  .head { top: calc(58px + env(safe-area-inset-top, 0px)); }
+  .eyebrow { font-size: 12px; margin-bottom: 4px; }
+  h1 { font-size: 27px; }
+  .insight { font-size: 13px; margin-top: 6px; line-height: 1.45; }
+  .idx { margin-top: 6px; font-size: 12px; }
+  .idx span + span { display: none; }
+  /* fiche en tiroir : monte du bas, la rangée et le pied s'effacent */
+  .card { left: 0; right: 0; width: auto; top: auto; bottom: 0; max-height: 52vh; border-radius: 22px 22px 0 0; border-bottom: 0; padding: 8px 18px calc(18px + env(safe-area-inset-bottom, 0px)); transform: translate(0, 100%); touch-action: pan-y; }
+  .card::before { content: ''; display: block; width: 40px; height: 4px; margin: 0 auto 10px; border-radius: 2px; background: rgba(241, 237, 228, .28); }
+  body.sel .rail, body.sel .foot { opacity: 0; pointer-events: none; }
   .legend { font-size: 10.5px; gap: 2px 12px; }
   .foot { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
   .rail { justify-content: flex-start; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 36px), transparent); }
   .meth { bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }
-  .card { top: auto; bottom: calc(78px + env(safe-area-inset-bottom, 0px)); transform: translate(0, 16px); max-height: 62vh; }
   .card.on { transform: translate(0, 0); }
-  .big { font-size: 36px; margin-top: 12px; }
+  .big { font-size: 34px; margin-top: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .card, .head, .tag, .chip { transition: none; } }
 </style>
@@ -335,10 +345,20 @@ function renderCard() {
   const card = $('card'), i = state.sel;
   if (i < 0) { card.classList.remove('on'); return; }
   const p = PL[state.pl], it = p.items[i];
-  card.innerHTML = `<header>${logoHTML(it)}<div><h2>${esc(it.name)}</h2><p class="kind">${it.rank}${it.rank === 1 ? 're' : 'e'} · ${esc(p.kind(it))}</p></div><button type="button" class="close" aria-label="Fermer la fiche">×</button></header>${p.card(it)}`;
+  card.innerHTML = `<header>${logoHTML(it)}<div><h2>${esc(it.name)}</h2><p class="kind">${it.rank}${it.rank === 1 ? 're' : 'e'} · ${esc(p.kind(it))}</p></div>` +
+    `<div class="hd-btns"><button type="button" class="nav" data-d="-1" aria-label="Société précédente">‹</button><button type="button" class="nav" data-d="1" aria-label="Société suivante">›</button>` +
+    `<button type="button" class="close" aria-label="Fermer la fiche">×</button></div></header>${p.card(it)}`;
   card.querySelector('.close').addEventListener('click', () => select(-1));
+  card.querySelectorAll('.nav').forEach((b) => b.addEventListener('click', () => step(+b.dataset.d)));
   card.scrollTop = 0; card.classList.add('on');
+  measureHero();
 }
+function step(d) { const n = PL[state.pl].items.length; select(((state.sel < 0 ? 0 : state.sel) + d + n) % n); }
+/* glisser le doigt à gauche ou à droite sur la fiche : société suivante ou précédente */
+(() => { let x0 = null, y0 = 0; const c = $('card');
+  c.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; });
+  c.addEventListener('pointerup', (e) => { if (x0 == null) return; const dx = e.clientX - x0, dy = e.clientY - y0; x0 = null;
+    if (Math.abs(dx) > 48 && Math.abs(dy) < 40 && state.sel >= 0 && !e.target.closest('button, a')) step(dx < 0 ? 1 : -1); }); })();
 
 function syncRail() {
   const rail = $('rail');
@@ -352,12 +372,18 @@ function measureBand() {
   const h = $('head').getBoundingClientRect(), l = $('legend').getBoundingClientRect();
   if (h.height && l.top) { band.top = Math.min(.6, (h.bottom + 10) / innerHeight); band.bot = Math.max(band.top + .2, (l.top - 8) / innerHeight); }
 }
-addEventListener('resize', () => setTimeout(measureBand, 60));
+addEventListener('resize', () => setTimeout(() => { measureBand(); measureHero(); }, 60));
+/* Écran étroit, fiche ouverte : bande libre pour la médaille choisie, entre les onglets et le haut du tiroir. */
+function measureHero() {
+  const s = $('switch').getBoundingClientRect(), c = $('card');
+  band.heroTop = (s.bottom + 8) / innerHeight;
+  band.heroBot = Math.max(band.heroTop + .15, 1 - (c.offsetHeight + 10) / innerHeight);
+}
 function openMeth() { $('meth').hidden = false; const b = $('methbtn'); b && b.setAttribute('aria-expanded', 'true'); }
 function closeMeth() { $('meth').hidden = true; const b = $('methbtn'); b && b.setAttribute('aria-expanded', 'false'); }
 function select(i) {
   state.sel = i; renderCard(); syncRail();
-  $('head').classList.toggle('hide', i >= 0);
+  $('head').classList.toggle('hide', i >= 0); document.body.classList.toggle('sel', i >= 0);
   if (i >= 0) { const b = $('rail').children[i]; b && b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: REDUCED ? 'auto' : 'smooth' }); }
 }
 function setPlanche(pl) {
@@ -375,7 +401,7 @@ addEventListener('keydown', (e) => {
 });
 renderHead(); renderRail(); syncRail();
 
-const ui = window.__ui = { DATA, LOGOS, REDUCED, PL, ORDER, state, select, setHover, setPlanche, two, esc, band, onSwitch: null, ready: false };
+const ui = window.__ui = { DATA, LOGOS, REDUCED, PL, ORDER, state, select, step, setHover, setPlanche, two, esc, band, onSwitch: null, ready: false };
 dispatchEvent(new Event('ui:ready'));
 window.__bf = { state, select, setPlanche, get api() { return ui.api || null; } };
 function fallback(msg) { const v = $('veil'); v.innerHTML = '<p class="fallback">' + msg + '</p>'; setTimeout(() => v.classList.add('gone'), 2600); }
@@ -693,7 +719,8 @@ async function start3D() {
     }
     const tri = [];                                     // écran haut : 1, 2, 3, 4…
     for (let s = 0, r = 1; s < n; r++) { tri.push([...Array(Math.min(r, n - s)).keys()].map((j) => j + s)); s += r; }
-    const LAY = { wide: placeRows(R, wide.rows, .36, .5, .55), tall: placeRows(R, tri, .3, .42, .28) };
+    const LAY = { wide: placeRows(R, wide.rows, .36, .5, .55), tall: placeRows(R, tri, .26, .3, .22) };
+    let lastSel = -1;
     const pick = (asp) => (asp < .9 ? 'tall' : 'wide');
     let lay = pick(innerWidth / innerHeight);
     const stemMat = new THREE.MeshPhysicalMaterial({ color: L.metal, metalness: 1, roughness: .3 });
@@ -719,31 +746,37 @@ async function start3D() {
     return {
       group, objs, frame,
       view: { glow: new THREE.Color(L.glow), pool: new THREE.Color(L.pool), poolZ: -1, refl: .68 },
-      // écran large : rapprochement doux ; écran étroit : la médaille choisie seule, cadrée au-dessus de la fiche (17 % de la hauteur)
-      focus: (o, F, narrow) => narrow ? { tgt: new THREE.Vector3(o.x, o.y0 + o.R, o.z), dist: o.R / (TAN * .17) }
-        : { tgt: new THREE.Vector3(F.tgt.x * .6 + o.x * .4, F.tgt.y * .7 + (o.y0 + o.R) * .3, o.z), dist: F.d * .84 },   // la composition reste entière dans le cadre
-      update(ti, t, dt, anyFocus, asp) {
+      // écran large : rapprochement doux, la composition reste entière dans le cadre ;
+      // écran étroit : la médaille choisie seule, en grand, dans la bande libre entre les onglets et le tiroir
+      focus: (o, F, narrow) => narrow
+        ? { tgt: new THREE.Vector3(o.x, o.y0 + o.R, o.z + .35 + o.R * .45), dist: o.R / (TAN * Math.min(.34, (ui.band.heroBot - ui.band.heroTop) * .8)) }
+        : { tgt: new THREE.Vector3(F.tgt.x * .6 + o.x * .4, F.tgt.y * .7 + (o.y0 + o.R) * .3, o.z), dist: F.d * .84 },
+      update(ti, t, dt, anyFocus, asp, solo) {
         lay = pick(asp);
         const k2 = REDUCED ? 1 : damp(dt, 3.2);
+        if (state.sel !== lastSel) { if (state.sel >= 0 && objs[state.sel]) objs[state.sel].spin0 = t; lastSel = state.sel; }   // la médaille choisie fait un tour, comme une pièce lancée
         objs.forEach((o) => {
           const P = LAY[lay].P[o.i];
           o.x += (P.x - o.x) * k2; o.y0 += (P.y0 - o.y0) * k2; o.z += (P.z - o.z) * k2;   // glissement vers la disposition voulue
           const on = o.i === state.sel || o.i === state.hover;
           o.f += ((on ? 1 : 0) - o.f) * damp(dt, 6);
+          o.h = (o.h || 0) + ((solo && o.i !== state.sel ? 1 : 0) - (o.h || 0)) * damp(dt, 5);   // écran étroit, fiche ouverte : les autres reculent dans le noir
           const e = ease.back(clamp01((ti - o.delay) / 1.15));
-          o.pivot.position.set(o.x, THREE.MathUtils.lerp(o.y0 - o.R * 2.3, o.y0 + o.R, e) + o.f * o.R * .05, o.z + o.f * (.35 + o.R * .45));   // la médaille choisie avance
+          o.pivot.position.set(o.x, THREE.MathUtils.lerp(o.y0 - o.R * 2.3, o.y0 + o.R, e) + o.f * o.R * .05, o.z + o.f * (.35 + o.R * .45) - o.h * 5);
+          o.pivot.scale.setScalar(1 - .4 * o.h);
           const face = Math.atan2(camera.position.x - o.x, camera.position.z - o.z);
           const sway = REDUCED ? 0 : Math.sin(t * .32 + o.phase) * .3 * (1 - o.f);
-          o.pivot.rotation.y = face + sway + (1 - clamp01((ti - o.delay) / 1.15)) * Math.PI * 1.5;
-          const up = o.y0 > .02 && e > .02;
+          const spin = REDUCED || o.spin0 == null ? 0 : (1 - ease.out(clamp01((t - o.spin0) / 1.2))) * Math.PI * 2;
+          o.pivot.rotation.y = face + sway + spin + (1 - clamp01((ti - o.delay) / 1.15)) * Math.PI * 1.5;
+          const up = o.y0 > .02 && e > .02 && o.h < .5;
           o.stem.visible = o.foot.visible = up;
           if (up) { o.stem.scale.set(.036, o.y0, .036); o.stem.position.set(o.x, o.y0 / 2, o.z - o.th * 1.2); o.foot.scale.set(.16, .03, .16); o.foot.position.set(o.x, .015, o.z - o.th * 1.2); }
           o.sh.position.set(o.x, .004, o.z);
-          const mats = o.coin.userData.mats, dim = anyFocus && !on ? .22 : 1;
+          const mats = o.coin.userData.mats, dim = o.h > .02 ? .22 * (1 - o.h) + .02 : anyFocus && !on ? .22 : 1;
           mats.metal.envMapIntensity += (dim - mats.metal.envMapIntensity) * damp(dt, 6);
           mats.face.emissiveIntensity = (mats.light ? .3 : .1) * mats.metal.envMapIntensity + o.f * .05;
-          mats.face.color.setScalar((mats.light ? .5 : .45) + .55 * mats.metal.envMapIntensity);
-          o.sh.material.opacity = (o.y0 > .02 ? .45 : .85) * e;
+          mats.face.color.setScalar(((mats.light ? .5 : .45) + .55 * mats.metal.envMapIntensity) * (1 - .9 * o.h));   // reculée dans le noir : l'émail s'éteint aussi
+          o.sh.material.opacity = (o.y0 > .02 ? .45 : .85) * e * (1 - o.h);
         });
       },
     };
@@ -811,7 +844,13 @@ async function start3D() {
   canvas.addEventListener('pointerleave', () => { setHover(-1); });
   let down = null;
   canvas.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
-  canvas.addEventListener('pointerup', (e) => { if (!down || pending || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return; const i = pick(e); select(i === state.sel ? -1 : i); });
+  canvas.addEventListener('pointerup', (e) => {
+    if (!down || pending) return;
+    const dx = e.clientX - down[0], dy = e.clientY - down[1]; down = null;
+    if (state.sel >= 0 && Math.abs(dx) > 48 && Math.abs(dy) < 40) { ui.step(dx < 0 ? 1 : -1); return; }   // glisser : société suivante ou précédente
+    if (Math.hypot(dx, dy) > 6) return;
+    const i = pick(e); select(i === state.sel ? -1 : i);
+  });
 
   /* ---------------- boucle ---------------- */
   const clock = new THREE.Clock(); let t = 0, frames = 0, acc = 0;
@@ -847,10 +886,10 @@ async function start3D() {
 
     const anyFocus = !pending && (state.sel >= 0 || state.hover >= 0);
     const asp = innerWidth / innerHeight;
-    S.update(ti, t, dt, anyFocus, asp);
+    const narrow = innerWidth < 760;   // même seuil que la fiche en tiroir
+    S.update(ti, t, dt, anyFocus, asp, narrow && !pending && state.sel >= 0);
 
     // caméra : cadrage de la disposition, légère parallaxe, approche de la médaille choisie
-    const narrow = innerWidth < 760;   // même seuil que la fiche posée en bas de l'écran
     const F = S.frame(asp), sel = !pending && state.sel >= 0 ? S.objs[state.sel] : null, ft = sel ? S.focus(sel, F, narrow) : null;
     const goT = ft ? ft.tgt : F.tgt;
     const goP = ft ? tmp.copy(F.pos).sub(F.tgt).normalize().multiplyScalar(ft.dist).add(ft.tgt) : tmp.copy(F.pos);
@@ -859,8 +898,8 @@ async function start3D() {
     cur.pos.lerp(goP, k); cur.tgt.lerp(goT, k);
     camera.position.copy(cur.pos); camera.lookAt(cur.tgt);
     // décalage de cadre : la scène laisse la place au titre (à gauche), à la fiche (à droite ; en bas sur téléphone)
-    // fiche en bas sur écran étroit : la médaille se place dans la bande libre du haut (centre à ~18 % de la hauteur)
-    const wide = innerWidth >= 900, offGoal = sel ? (wide ? .1 : 0) : F.off, offYGoal = sel && narrow ? .5 - .18 : F.offY;
+    // tiroir sur écran étroit : la médaille se place au centre de la bande libre du haut
+    const B = ui.band, wide = innerWidth >= 900, offGoal = sel ? (wide ? .1 : 0) : F.off, offYGoal = sel && narrow ? .5 - (B.heroTop + B.heroBot) / 2 : F.offY;
     cur.off += (offGoal - cur.off) * k; cur.offY += (offYGoal - cur.offY) * k;
     if (Math.abs(cur.off) > .001 || Math.abs(cur.offY) > .001) camera.setViewOffset(innerWidth, innerHeight, cur.off * innerWidth, cur.offY * innerHeight, innerWidth, innerHeight); else camera.clearViewOffset();
 
