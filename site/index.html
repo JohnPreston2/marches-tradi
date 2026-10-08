@@ -199,7 +199,10 @@ function openNow(k) {
 }
 function sessionTxt(k, b) {
   const I = b.index;
-  if (I.state === 'REGULAR' && I.time) return `en séance · cours de ${hhmm(I.time)}`;
+  if (I.state === 'REGULAR' && I.time) {   // relevé pris en séance : « en séance » seulement si la séance dure encore
+    const today = new Date(I.time).toDateString() === new Date().toDateString();
+    return openNow(k) && today ? `en séance · cours de ${hhmm(I.time)}` : `cours du ${dayFR(I.time)} à ${hhmm(I.time)}`;
+  }
   return `clôture du ${dayFR(I.lastDate)}`;
 }
 

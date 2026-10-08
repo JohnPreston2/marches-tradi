@@ -44,8 +44,9 @@ SHOTS = [
     ("robotique_tel", 375, 812, "robotique", None),
     ("ia_methode", 1440, 900, "ia", "meth"),
 ]
-if len(sys.argv) > 2:                                  # sous-ensemble : noms separes par des virgules
+if len(sys.argv) > 2 and sys.argv[2] != "tout":       # sous-ensemble : noms separes par des virgules
     SHOTS = [s for s in SHOTS if s[0] in sys.argv[2].split(",")]
+BASE = sys.argv[3].rstrip("/") if len(sys.argv) > 3 else f"http://127.0.0.1:{PORT}"   # ou l'adresse du site en ligne
 with sync_playwright() as p:
     b = p.chromium.launch(channel="chrome", headless=True, args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
     for name, w, h, anchor, action in SHOTS:
@@ -55,7 +56,7 @@ with sync_playwright() as p:
         pg.on("console", lambda m: logs.append(f"{m.type}: {m.text}"))
         pg.on("pageerror", lambda e: logs.append(f"ERREUR: {e}"))
         pg.add_init_script("window.__TSET = 9; window.__NOADAPT = 1; window.__DTCAP = 0.25;")
-        pg.goto(f"http://127.0.0.1:{PORT}/#{anchor}", wait_until="commit")
+        pg.goto(f"{BASE}/#{anchor}", wait_until="commit")
         try:
             pg.wait_for_function("window.__ui && window.__ui.ready", timeout=60000)
         except Exception:

@@ -74,7 +74,19 @@ ne donnait qu'un fragment, « VA ») avec `python outils\logo_depuis_site.py <ur
 - `python outils\test_clic.py` : clic, flèches, Échap, changement d'onglet.
 - `.venv\Scripts\python outils\resume.py` : les chiffres du dernier relevé, lisibles.
 
+## Publication (depuis le 8 octobre 2026)
+
+- Site public : https://johnpreston2.github.io/marches-tradi/ — dépôt `JohnPreston2/marches-tradi`.
+  Chaque envoi sur `main` republie le dossier `site/` (`.github/workflows/pages.yml`, environ une minute).
+- Relevé automatique sur le serveur delta : copie du dépôt dans `~/marches-tradi`, environnement Python
+  `.venv` à part, tâche planifiée `17 7-21 * * 1-5` qui lance `serveur/publier.sh` (journal `/tmp/marches_tradi.log`).
+  Le serveur publie avec la clé de déploiement `delta-marches-tradi` (ce dépôt seulement ; alias SSH `github-marches`).
+- **Depuis le PC, ne jamais envoyer `site/marches.json` ni `site/logos/`** : ce sont les fichiers du serveur.
+  On peut envoyer le reste (page, script, outils) ; le serveur récupère ces changements avant chaque relevé.
+- Retirer le relevé automatique : remettre la sauvegarde de la liste des tâches planifiées, nommée dans le journal
+  d'installation (`~/backups/marches-tradi/`), ou supprimer la ligne `marches-tradi`.
+
 ## Pas encore fait
 
-Publication, relevé automatique à heure fixe, fil d'actualités : à décider.
-Yahoo Finance n'est pas une source officielle, et ses conditions réservent ses données à un usage personnel.
+Fil d'actualités. Yahoo Finance n'est pas une source officielle, et ses conditions réservent ses données
+à un usage personnel.
