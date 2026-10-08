@@ -1,0 +1,9 @@
+# environnement Python et caches du relevé : propres à chaque machine
+.venv/
+cache/
+__pycache__/
+*.pyc
+*.tmp
+outils/captures/
+# réglages locaux de l'app Claude
+.claude/
